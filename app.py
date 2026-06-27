@@ -49,7 +49,7 @@ except ImportError:
     MISSING.append("pywebview")
 
 if MISSING:
-    print(f"\n❌ Missing packages: {', '.join(MISSING)}")
+    print(f"\n Missing packages: {', '.join(MISSING)}")
     print(f"   Run: pip install {' '.join(MISSING)}\n")
     sys.exit(1)
 

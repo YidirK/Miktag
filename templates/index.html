@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>miktag</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f7f8fa;
+    --surface:   #ffffff;
+    --card:      #ffffff;
+    --border:    #e6e8ec;
+    --border-2:  #d7dbe1;
+    --accent:    #6366f1;
+    --accent-2:  #4f46e5;
+    --accent-soft: #eef2ff;
+    --green:     #10b981;
+    --green-soft:#ecfdf5;
+    --red:       #ef4444;
+    --red-soft:  #fef2f2;
+    --amber:     #f59e0b;
+    --amber-soft:#fffbeb;
+    --text:      #111827;
+    --text-2:    #374151;
+    --muted:     #6b7280;
+    --muted-2:   #9ca3af;
+    --radius:    12px;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,0.04);
+    --shadow-md: 0 4px 12px rgba(16,24,40,0.06);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,0.08);
+    --font:      'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ───────────────────────────────────────────────────── */
+  .shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: 64px 1fr;
+    height: 100vh;
+  }
+
+  /* ── Topbar ───────────────────────────────────────────────────── */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 16px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    z-index: 10;
+  }
+
+  /* ── Logo area ────────────────────────────────────────────────── */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.3px;
+  }
+  .logo-box {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .logo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .logo-text {
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: black;
+    background-clip: text;
+    font-weight: 800;
+    font-size: 18px;
+  }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted-2);
+  }
+  .badge.running { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+  .badge.running::before { background: var(--accent); animation: pulse 1.2s infinite; }
+  .badge.done { color: var(--green); background: var(--green-soft); border-color: transparent; }
+  .badge.done::before { background: var(--green); }
+
+  /* ── Sidebar ──────────────────────────────────────────────────── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted-2);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 14px 12px 8px;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: none;
+    background: none;
+    color: var(--text-2);
+    font-family: var(--font);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    text-align: left;
+  }
+  .nav-btn:hover { background: var(--bg); color: var(--text); }
+  .nav-btn.active {
+    background: var(--accent-soft);
+    color: var(--accent-2);
+    font-weight: 600;
+  }
+  .nav-btn svg { flex-shrink: 0; opacity: 0.75; }
+  .nav-btn.active svg { opacity: 1; }
+
+  /* ── Main ─────────────────────────────────────────────────────── */
+  main {
+    overflow-y: auto;
+    padding: 32px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ── Pages ────────────────────────────────────────────────────── */
+  .page { display: none; flex-direction: column; gap: 22px; animation: fadeIn 0.25s ease; }
+  .page.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Cards ────────────────────────────────────────────────────── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Form controls ────────────────────────────────────────────── */
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: 9px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13.5px;
+    outline: none;
+    transition: all 0.15s;
+  }
+  input[type="text"]::placeholder { color: var(--muted-2); }
+  input[type="text"]:hover { border-color: #c7ccd4; }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13.5px; font-weight: 500; color: var(--text); }
+  .toggle-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Toggle switch */
+  .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: #d1d5db;
+    border-radius: 22px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider::before { transform: translateX(18px); }
+
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: 9px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13.5px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  select:hover { border-color: #c7ccd4; }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+
+  input[type="range"] { accent-color: var(--accent); width: 100%; }
+
+  /* ── Buttons ──────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 9px;
+    border: none;
+    font-family: var(--font);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 1px 2px rgba(99,102,241,0.2);
+  }
+  .btn-primary:hover {
+    background: var(--accent-2);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(99,102,241,0.3);
+  }
+  .btn-primary:disabled { opacity: 0.5; transform: none; box-shadow: none; cursor: not-allowed; }
+  .btn-ghost { background: var(--surface); border: 1px solid var(--border-2); color: var(--text); }
+  .btn-ghost:hover { background: var(--bg); border-color: #c7ccd4; }
+  .btn-danger { background: var(--red-soft); border: 1px solid rgba(239,68,68,0.25); color: var(--red); }
+  .btn-danger:hover { background: #fee2e2; }
+
+  /* ── Progress ─────────────────────────────────────────────────── */
+  .progress-wrap { margin: 4px 0 8px; }
+  .progress-bar-bg { background: var(--bg); border-radius: 6px; height: 7px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), #8b5cf6); transition: width 0.3s ease; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500; }
+
+  /* ── Track list ───────────────────────────────────────────────── */
+  .track-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .track-item {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 11px 14px;
+    transition: all 0.15s;
+  }
+  .track-item:hover { border-color: var(--border-2); box-shadow: var(--shadow-sm); }
+  .track-item.status-done    { border-left: 3px solid var(--green); }
+  .track-item.status-error   { border-left: 3px solid var(--red); }
+  .track-item.status-skipped { border-left: 3px solid var(--amber); }
+  .track-item.status-running { border-left: 3px solid var(--accent); }
+
+  .track-cover {
+    width: 52px; height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    color: var(--muted-2);
+  }
+  .track-cover img { width: 100%; height: 100%; object-fit: cover; }
+
+  .track-info { overflow: hidden; }
+  .track-name { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-meta { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-file { font-size: 11px; color: var(--muted-2); margin-top: 2px; font-family: ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .track-status { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-done    { background: var(--green); }
+  .dot-error   { background: var(--red); }
+  .dot-skipped { background: var(--amber); }
+  .dot-running { background: var(--accent); animation: pulse 1s infinite; }
+  .dot-pending { background: var(--muted-2); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .status-label { font-size: 12px; font-weight: 500; color: var(--text-2); }
+
+  /* ── Stats row ────────────────────────────────────────────────── */
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat-box {
+    flex: 1; min-width: 110px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 16px 18px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-green { color: var(--green); }
+  .stat-red   { color: var(--red); }
+  .stat-amber { color: var(--amber); }
+  .stat-accent{ color: var(--accent); }
+
+  /* ── Empty state ──────────────────────────────────────────────── */
+  .empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 70px 20px; color: var(--muted); gap: 12px; text-align: center;
+    background: var(--surface);
+    border: 1.5px dashed var(--border-2);
+    border-radius: var(--radius);
+  }
+  .empty svg { opacity: 0.35; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .empty-sub { font-size: 13px; color: var(--muted); }
+
+  /* ── Scrollbar ────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 7px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+  /* ── Toast ────────────────────────────────────────────────────── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 11px; padding: 13px 18px;
+    font-size: 13.5px; font-weight: 500; color: var(--text);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.25s ease;
+    z-index: 999;
+    display: flex; align-items: center; gap: 10px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: var(--green); color: var(--green); }
+  #toast.error   { border-color: var(--red); color: var(--red); }
+
+  /* ── Spinner ──────────────────────────────────────────────────── */
+  .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error / Skip tooltip ─────────────────────────────────────── */
+  .err-btn {
+    position: relative;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(239,68,68,0.45);
+    background: var(--red-soft);
+    color: var(--red);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: default;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    font-family: var(--font);
+  }
+  .err-btn:hover { background: #fee2e2; }
+  .err-btn .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 400;
+    border-radius: 9px;
+    padding: 9px 13px;
+    max-width: 240px;
+    line-height: 1.5;
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 100;
+    text-align: left;
+  }
+  .err-btn .tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 8px;
+    border: 5px solid transparent;
+    border-top-color: rgba(239,68,68,0.3);
+  }
+  .err-btn:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .skip-btn {
+    position: relative;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(245,158,11,0.45);
+    background: var(--amber-soft);
+    color: var(--amber);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: default;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font);
+  }
+  .skip-btn .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid rgba(245,158,11,0.35);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 400;
+    border-radius: 9px;
+    padding: 9px 13px;
+    max-width: 240px;
+    line-height: 1.5;
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 100;
+  }
+  .skip-btn .tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 8px;
+    border: 5px solid transparent;
+    border-top-color: rgba(245,158,11,0.35);
+  }
+  .skip-btn:hover .tooltip { visibility: visible; opacity: 1; transform: translateY(0); }
+
+  /* ── Folder picker button ─────────────────────────────────────── */
+  .pick-btn {
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: 9px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .pick-btn:hover { background: var(--bg); color: var(--accent); border-color: var(--accent); }
+  .pick-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Section header ───────────────────────────────────────────── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; }
+  .section-title  { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: var(--text); }
+  .section-sub    { font-size: 13.5px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Input row helper ─────────────────────────────────────────── */
+  .input-row { display: flex; gap: 10px; align-items: center; }
+  .input-row .input-wrap { flex: 1; position: relative; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Topbar ─────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="logo">
+      <!-- LOGO PLACEHOLDER: replace src with your logo file (e.g. logo.png) -->
+      <div class="logo-box">
+        <img src="./logo.png" alt="miktag" onerror="this.style.display='none'; this.parentElement.innerHTML='<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2.2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><circle cx=\\'9\\' cy=\\'18\\' r=\\'3\\'/><circle cx=\\'19\\' cy=\\'16\\' r=\\'3\\'/><polyline points=\\'9 9 9 18\\'/><polyline points=\\'19 7 19 16\\'/><line x1=\\'9\\' y1=\\'9\\' x2=\\'19\\' y2=\\'7\\'/></svg>'">
+      </div>
+      <span class="logo-text">MikTag</span>
+    </div>
+    <div class="topbar-right">
+      <span class="badge" id="statusBadge">Idle</span>
+    </div>
+  </header>
+
+  <!-- ── Sidebar ────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Workspace</div>
+    <button class="nav-btn active" onclick="showPage('scan')" id="nav-scan">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Scan & Tag
+    </button>
+    <button class="nav-btn" onclick="showPage('organize')" id="nav-organize">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Organize Files
+    </button>
+    <button class="nav-btn" onclick="showPage('settings')" id="nav-settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- ══ Scan Page ════════════════════════════════════════════ -->
+    <div class="page active" id="page-scan">
+
+      <div class="section-header">
+        <div>
+          <div class="section-title">Scan &amp; Tag</div>
+          <div class="section-sub">Identify your music with Shazam and write ID3 tags automatically</div>
+        </div>
+      </div>
+
+      <!-- Folder input -->
+      <div class="card">
+        <div class="card-title">Source Folder</div>
+        <div class="input-row">
+          <input type="text" id="folderPath" placeholder="/path/to/your/music">
+          <button class="pick-btn" id="pickBtn" onclick="pickFolder('folderPath')" title="Browse for folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+          <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start Scan
+          </button>
+          <button class="btn btn-danger" id="cancelBtn" onclick="cancelScan()" style="display:none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="card" id="progressCard" style="display:none">
+        <div class="card-title">Progress</div>
+        <div class="progress-wrap">
+          <div class="progress-bar-bg">
+            <div class="progress-bar" id="progressBar" style="width:0%"></div>
+          </div>
+          <div class="progress-info">
+            <span id="progressText">Initializing…</span>
+            <span id="progressPct">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row" id="statsRow" style="display:none">
+        <div class="stat-box"><div class="stat-value stat-accent" id="statTotal">0</div><div class="stat-label">Total</div></div>
+        <div class="stat-box"><div class="stat-value stat-green" id="statDone">0</div><div class="stat-label">Tagged</div></div>
+        <div class="stat-box"><div class="stat-value stat-amber" id="statSkipped">0</div><div class="stat-label">Skipped</div></div>
+        <div class="stat-box"><div class="stat-value stat-red" id="statErrors">0</div><div class="stat-label">Errors</div></div>
+      </div>
+
+      <!-- Track list -->
+      <div id="trackListWrap">
+        <div class="empty" id="emptyState">
+         <svg width="48" height="48" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><title>ionicons-v5-j</title><path d="M192,218v-6c0-14.84,10-27,24.24-30.59l174.59-46.68A20,20,0,0,1,416,154V176" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></path><path d="M416,295.94v80c0,13.91-8.93,25.59-22,30l-22,8c-25.9,8.72-52-10.42-52-38h0a33.37,33.37,0,0,1,23-32l51-18.15c13.07-4.4,22-15.94,22-29.85V58a10,10,0,0,0-12.6-9.61L204,102a16.48,16.48,0,0,0-12,16v226c0,13.91-8.93,25.6-22,30l-52,18c-13.88,4.68-22,17.22-22,32h0c0,27.58,26.52,46.55,52,38l22-8c13.07-4.4,22-16.08,22-30v-80" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></path></g></svg>
+          <div class="empty-title">No tracks yet</div>
+          <div class="empty-sub">Enter a folder path and click Start Scan</div>
+        </div>
+        <div class="track-list" id="trackList"></div>
+      </div>
+    </div>
+
+    <!-- ══ Organize Page ═════════════════════════════════════════ -->
+    <div class="page" id="page-organize">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Organize Files</div>
+          <div class="section-sub">Move your tagged files into a clean folder structure</div>
+        </div>
+      </div>
+
+      <!-- Source folder picker -->
+      <div class="card">
+        <div class="card-title">Source Folder</div>
+        <label style="margin-bottom:6px">Folder containing your tagged music <span style="color:var(--muted);font-weight:400">(required)</span></label>
+        <div class="input-row" style="margin-bottom:4px">
+          <input type="text" id="orgSource" placeholder="/path/to/tagged/music">
+          <button class="pick-btn" id="orgPickSrcBtn" onclick="pickFolder('orgSource')" title="Browse for source folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scheme + Output -->
+      <div class="card">
+        <div class="card-title">Destination</div>
+        <label style="margin-bottom:6px">Folder scheme</label>
+        <select id="orgScheme" style="width:100%;margin-bottom:16px">
+          <option value="genre/artist/album">Genre / Artist / Album</option>
+          <option value="artist/album" selected>Artist / Album</option>
+          <option value="artist">Artist only</option>
+          <option value="flat">Flat (no subfolders)</option>
+        </select>
+
+        <label style="margin-bottom:6px">Output folder <span style="color:var(--muted);font-weight:400">(leave blank = same as source)</span></label>
+        <div class="input-row" style="margin-bottom:18px">
+          <input type="text" id="orgOutput" placeholder="/path/to/output (optional)">
+          <button class="pick-btn" id="orgPickOutBtn" onclick="pickFolder('orgOutput')" title="Browse for output folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+
+        <button class="btn btn-primary" onclick="organizeFiles()" id="orgBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Organize
+        </button>
+      </div>
+
+      <div class="card" id="orgResultCard" style="display:none">
+        <div class="card-title">Result</div>
+        <p id="orgResultText" style="font-size:14px;color:var(--green);font-weight:500"></p>
+      </div>
+    </div>
+
+    <!-- ══ Settings Page ════════════════════════════════════════ -->
+    <div class="page" id="page-settings">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Settings</div>
+          <div class="section-sub">Configure scanning behavior</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Options</div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Download cover art</div>
+            <div class="toggle-sub">Fetch high-quality artwork from Shazam</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgCovers" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Rename files</div>
+            <div class="toggle-sub">Rename to "Artist - Title.ext" format</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgRename" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="toggle-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+          <div>
+            <div class="toggle-label">Rate limit delay: <span id="delayVal">1.5</span>s</div>
+            <div class="toggle-sub">Pause between Shazam requests — lower = faster but may get blocked</div>
+          </div>
+          <input type="range" id="cfgDelay" min="0.5" max="5" step="0.5" value="1.5"
+            oninput="document.getElementById('delayVal').textContent = this.value">
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentJobId  = null;
+let pollInterval  = null;
+let knownTracks   = 0;
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  const icon = type === 'success'
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  t.innerHTML = icon + msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3200);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function getConfig() {
+  return {
+    download_covers:  document.getElementById('cfgCovers').checked,
+    rename_files:     document.getElementById('cfgRename').checked,
+    rate_limit_delay: parseFloat(document.getElementById('cfgDelay').value),
+  };
+}
+
+function musicNote() {
+  return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="18" r="3"/><circle cx="19" cy="16" r="3"/><polyline points="9 9 9 18"/><polyline points="19 7 19 16"/><line x1="9" y1="9" x2="19" y2="7"/></svg>`;
+}
+
+function statusBadge(status) {
+  const map = {
+    done:    ['dot-done',    'Done'],
+    error:   ['dot-error',   'Error'],
+    skipped: ['dot-skipped', 'Skipped'],
+    running: ['dot-running', 'Scanning…'],
+    pending: ['dot-pending', 'Pending'],
+  };
+  const [cls, label] = map[status] || ['dot-pending', status];
+  return `<span class="dot ${cls}"></span><span class="status-label">${label}</span>`;
+}
+
+// ── Render track ───────────────────────────────────────────────────────────
+function renderTrack(t, idx) {
+  const filename = t.path.split(/[\\/]/).pop();
+  const coverHtml = t.cover_base64
+    ? `<img src="data:image/jpeg;base64,${t.cover_base64}" alt="cover">`
+    : musicNote();
+
+  const metaParts = [t.artist, t.album, t.year].filter(Boolean);
+  const metaLine  = metaParts.length ? metaParts.join(' · ') : (t.status === 'running' ? 'Scanning…' : '');
+
+  let statusCell = '';
+  if (t.status === 'error') {
+    const reason = t.error || 'Unknown error';
+    statusCell = `
+      <div class="track-status">
+        <span class="err-btn">!
+          <span class="tooltip"><strong style="color:var(--red)">Error</strong><br>${escHtml(reason)}</span>
+        </span>
+        <span class="status-label" style="color:var(--red)">Error</span>
+      </div>`;
+  } else if (t.status === 'skipped') {
+    const reason = t.error || 'Track not recognized by Shazam — audio may be too short, too quiet, or not in Shazam\'s database.';
+    statusCell = `
+      <div class="track-status">
+        <span class="skip-btn">?
+          <span class="tooltip"><strong style="color:var(--amber)">Not recognized</strong><br>${escHtml(reason)}</span>
+        </span>
+        <span class="status-label" style="color:var(--amber)">Skipped</span>
+      </div>`;
+  } else {
+    statusCell = `<div class="track-status">${statusBadge(t.status)}</div>`;
+  }
+
+  return `
+    <div class="track-item status-${t.status}" id="track-idx-${idx}" data-status="${t.status}">
+      <div class="track-cover">${coverHtml}</div>
+      <div class="track-info">
+        <div class="track-name">${escHtml(t.title || filename)}</div>
+        <div class="track-meta">${escHtml(metaLine)}</div>
+        <div class="track-file">${escHtml(t.path)}</div>
+      </div>
+      ${statusCell}
+    </div>`;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Folder picker (reusable for any input) ─────────────────────────────────
+async function pickFolder(targetInputId) {
+  const input = document.getElementById(targetInputId);
+  if (!input) return;
+  // Disable all pick buttons during the operation
+  const pickBtns = document.querySelectorAll('.pick-btn');
+  pickBtns.forEach(b => b.disabled = true);
+  try {
+    let path = null;
+    if (window.pywebview && window.pywebview.api) {
+      path = await window.pywebview.api.pick_folder();
+    } else {
+      const res  = await fetch('/api/pick-folder');
+      const data = await res.json();
+      path = data.path || null;
+    }
+    if (path) {
+      input.value = path;
+      input.focus();
+    }
+  } catch (e) {
+    toast('Folder picker unavailable: ' + e.message, 'error');
+  } finally {
+    pickBtns.forEach(b => b.disabled = false);
+  }
+}
+
+// ── Start scan ─────────────────────────────────────────────────────────────
+async function startScan() {
+  const folder = document.getElementById('folderPath').value.trim();
+  if (!folder) { toast('Please enter a folder path', 'error'); return; }
+
+  document.getElementById('trackList').innerHTML = '';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('progressCard').style.display = 'block';
+  document.getElementById('statsRow').style.display = 'flex';
+  document.getElementById('scanBtn').disabled = true;
+  document.querySelectorAll('.pick-btn').forEach(b => b.disabled = true);
+  document.getElementById('cancelBtn').style.display = 'inline-flex';
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = 'Running';
+  badge.className = 'badge running';
+  knownTracks = 0;
+
+  try {
+    const res  = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder_path: folder, config: getConfig() })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Server error', 'error'); resetScanUI(); return; }
+
+    currentJobId = data.job_id;
+    pollInterval = setInterval(pollJob, 1000);
+  } catch (e) {
+    toast('Cannot reach server: ' + e.message, 'error');
+    resetScanUI();
+  }
+}
+
+// ── Poll job ───────────────────────────────────────────────────────────────
+async function pollJob() {
+  if (!currentJobId) return;
+  try {
+    const res  = await fetch(`/api/scan/${currentJobId}`);
+    const job  = await res.json();
+    updateProgress(job);
+    updateStats(job.tracks || []);
+    renderNewTracks(job.tracks || []);
+
+    if (['done', 'cancelled', 'error'].includes(job.status)) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      resetScanUI();
+      const badge = document.getElementById('statusBadge');
+      if (job.status === 'done') {
+        badge.textContent = 'Done';
+        badge.className = 'badge done';
+      } else {
+        badge.textContent = job.status;
+        badge.className = 'badge';
+      }
+      toast(
+        job.status === 'done'
+          ? `Scan complete — ${job.tracks.filter(t=>t.status==='done').length} tracks tagged`
+          : 'Scan ' + job.status,
+        job.status === 'done' ? 'success' : 'error'
+      );
+    }
+  } catch (e) { /* network blip, retry next tick */ }
+}
+
+function updateProgress(job) {
+  const pct = job.total ? Math.round((job.progress / job.total) * 100) : 0;
+  document.getElementById('progressBar').style.width  = pct + '%';
+  document.getElementById('progressPct').textContent  = pct + '%';
+  document.getElementById('progressText').textContent =
+    job.total ? `${job.progress} / ${job.total} tracks` : 'Searching for files…';
+}
+
+function updateStats(tracks) {
+  document.getElementById('statTotal').textContent   = tracks.length;
+  document.getElementById('statDone').textContent    = tracks.filter(t=>t.status==='done').length;
+  document.getElementById('statSkipped').textContent = tracks.filter(t=>t.status==='skipped').length;
+  document.getElementById('statErrors').textContent  = tracks.filter(t=>t.status==='error').length;
+}
+
+function renderNewTracks(tracks) {
+  const list = document.getElementById('trackList');
+  for (let i = knownTracks; i < tracks.length; i++) {
+    list.insertAdjacentHTML('beforeend', renderTrack(tracks[i], i));
+  }
+  for (let i = 0; i < Math.min(knownTracks, tracks.length); i++) {
+    const t  = tracks[i];
+    const el = document.getElementById('track-idx-' + i);
+    if (el && el.dataset.status !== t.status) {
+      el.outerHTML = renderTrack(t, i);
+    }
+  }
+  knownTracks = tracks.length;
+}
+
+function resetScanUI() {
+  document.getElementById('scanBtn').disabled = false;
+  document.querySelectorAll('.pick-btn').forEach(b => b.disabled = false);
+  document.getElementById('cancelBtn').style.display = 'none';
+}
+
+// ── Cancel scan ────────────────────────────────────────────────────────────
+async function cancelScan() {
+  if (!currentJobId) return;
+  await fetch(`/api/scan/${currentJobId}/cancel`, { method: 'POST' });
+  toast('Cancelling scan…');
+}
+
+// ── Organize ───────────────────────────────────────────────────────────────
+async function organizeFiles() {
+  const source = document.getElementById('orgSource').value.trim();
+  if (!source) { toast('Please select a source folder', 'error'); return; }
+
+  const btn = document.getElementById('orgBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Moving…';
+
+  try {
+    const res  = await fetch('/api/organize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_folder: source,
+        job_id:        currentJobId, // optional, kept for backward compatibility
+        scheme:        document.getElementById('orgScheme').value,
+        output_folder: document.getElementById('orgOutput').value.trim() || null,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Error', 'error'); }
+    else {
+      document.getElementById('orgResultCard').style.display = 'block';
+      document.getElementById('orgResultText').textContent =
+        `✓ ${data.moved} file(s) moved successfully.`;
+      toast(`${data.moved} files organized`);
+    }
+  } catch (e) {
+    toast('Network error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Organize';
+  }
+}
+</script>
+</body>
+</html>

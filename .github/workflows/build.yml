@@ -1,0 +1,212 @@
+name: Build & Release
+
+# ── Triggers ──────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+# ═════════════════════════════════════════════════════════════════════════════
+jobs:
+
+  # ── Build on each OS in parallel ─────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: miktag-windows
+            artifact_path: dist/miktag
+            installer_path: installer/miktag-setup-windows.exe
+            installer_name: miktag-setup-windows.exe
+
+          - os: macos-latest
+            artifact_name: miktag-macos
+            artifact_path: dist/miktag.app
+            installer_path: installer/miktag-macos.dmg
+            installer_name: miktag-macos.dmg
+
+          - os: ubuntu-latest
+            artifact_name: miktag-linux
+            artifact_path: dist/miktag
+            installer_path: installer/miktag_1.0.0_amd64.deb
+            installer_name: miktag-linux.deb
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ──────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── 3. OS-specific system dependencies ───────────────────────────────
+
+      - name: Install Linux system deps (GTK for PyWebView)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libglib2.0-dev \
+            libwebkit2gtk-4.0-dev \
+            dpkg \
+            fakeroot \
+            libcairo2-dev \
+            libgirepository1.0-dev \
+            gir1.2-webkit2-4.0
+
+      - name: Install macOS tools (create-dmg)
+        if: runner.os == 'macOS'
+        run: brew install create-dmg || true   # non-fatal if already present
+
+      # ── 4. Python dependencies ───────────────────────────────────────────
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── 5. Build with PyInstaller ─────────────────────────────────────────
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: pyinstaller miktag.spec --clean --noconfirm
+
+      - name: Build (macOS / Linux)
+        if: runner.os != 'Windows'
+        run: pyinstaller miktag.spec --clean --noconfirm
+
+      # ── 6. Create installer ───────────────────────────────────────────────
+
+      - name: Create Windows installer (Inno Setup)
+        if: runner.os == 'Windows'
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: miktag_installer.iss
+          options: /O+
+
+      - name: Create macOS .dmg
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p installer
+          # Ad-hoc sign so Gatekeeper doesn't block it
+          codesign --force --deep --sign - dist/miktag.app || true
+          create-dmg \
+            --volname "miktag" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "miktag.app" 175 190 \
+            --hide-extension "miktag.app" \
+            --app-drop-link 425 190 \
+            "installer/miktag-macos.dmg" \
+            "dist/miktag.app" || \
+          # Fallback: plain zip if create-dmg fails (no icon assets yet)
+          (mkdir -p installer && cd dist && zip -r ../installer/miktag-macos.dmg miktag.app)
+
+      - name: Create Linux .deb
+        if: runner.os == 'Linux'
+        run: |
+          bash build_linux.sh
+          # Rename with version from tag (or 'dev')
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION:-dev}"
+          mv installer/miktag_1.0.0_amd64.deb \
+             installer/miktag-linux.deb || true
+
+      # ── 7. Upload build artifact (available in every run, not just releases)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          retention-days: 7
+
+      # ── 8. Upload installer artifact
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.installer_name }}
+          path: ${{ matrix.installer_path }}
+          if-no-files-found: warn
+          retention-days: 30
+
+  # ── Publish GitHub Release (only on v* tags) ─────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only run when a version tag is pushed (not on plain commits or PRs)
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout (for CHANGELOG / tag info)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Download all installer artifacts produced by the build jobs
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          # Download only the installer files (not the raw dist folders)
+          pattern: "miktag-*"
+          merge-multiple: true
+
+      - name: List release files
+        run: ls -lh release-files/
+
+      # Auto-generate release notes from commits since last tag
+      - name: Generate release notes
+        id: notes
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p')
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          else
+            NOTES=$(git log --pretty=format:"- %s" --no-merges | head -20)
+          fi
+          echo "NOTES<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      # Create the release and attach all 3 installers
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "miktag ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}   # v1.0.0-beta → pre-release
+          body: |
+            ## What's new in ${{ github.ref_name }}
+
+            ${{ steps.notes.outputs.NOTES }}
+
+            ---
+
+            ## Downloads
+
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | 🪟 Windows | `miktag-setup-windows.exe` | Installer with Start Menu shortcut |
+            | 🍎 macOS   | `miktag-macos.dmg`         | Drag to Applications |
+            | 🐧 Linux   | `miktag-linux.deb`         | `sudo dpkg -i miktag-linux.deb` |
+
+          files: |
+            release-files/miktag-setup-windows.exe
+            release-files/miktag-macos.dmg
+            release-files/miktag-linux.deb

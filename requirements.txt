@@ -4,3 +4,7 @@ mutagen>=1.47.0
 requests>=2.31.0
 pywebview>=5.0.0
 pyinstaller>=6.0.0
+pyqt5
+pyqtwebengine
+pywebview
+pywebview[qt]

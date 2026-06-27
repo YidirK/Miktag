@@ -5,7 +5,7 @@
 
 
 <p align="center">
-  <img src="assets/logo.png" alt="miktag Logo" width="180">
+  <img src="assets/icon.png" alt="miktag Logo" width="180">
 </p>
 
 ## About

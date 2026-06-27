@@ -59,16 +59,16 @@ jobs:
       - name: Install Linux system deps (GTK for PyWebView)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          sudo apt-get update
           sudo apt-get install -y \
             libgtk-3-dev \
             libglib2.0-dev \
-            libwebkit2gtk-4.0-dev \
-            dpkg \
-            fakeroot \
+            libwebkit2gtk-4.1-dev \
+            gir1.2-webkit2-4.1 \
             libcairo2-dev \
             libgirepository1.0-dev \
-            gir1.2-webkit2-4.0
+            fakeroot \
+            dpkg
 
       - name: Install macOS tools (create-dmg)
         if: runner.os == 'macOS'
